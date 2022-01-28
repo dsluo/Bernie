@@ -5,10 +5,14 @@ use sqlx::postgres::PgRow;
 use url::Url;
 
 use crate::{
-    soundboard::{Playback, Sound},
+    soundboard::{
+        Playback,
+        Sound,
+        Guild,
+        Snowflake
+    },
     SoundboardBackend,
 };
-use crate::soundboard::{Guild, Snowflake};
 
 pub struct DatabaseBackend {
     pool: PgPool,
@@ -179,14 +183,16 @@ impl SoundboardBackend for DatabaseBackend {
             sqlx::query_as::<_, Playback>(
                 "select playbacks.*, sounds.guild_id from playbacks \
                 inner join sounds on sounds.id = playbacks.sound_id \
-                where guild_id = ? and sound_id = ?")
+                where guild_id = ? and sound_id = ? \
+                order by playbacks.created_at desc")
                 .bind(guild.id as i64)
                 .bind(sound_id)
         } else {
             sqlx::query_as::<_, Playback>(
                 "select playbacks.*, sounds.guild_id from playbacks \
                 inner join sounds on sounds.id = playbacks.sound_id \
-                where guild_id = ? and sound_id = ?")
+                where guild_id = ? \
+                order by playbacks.created_at desc")
                 .bind(guild.id as i64)
         };
 

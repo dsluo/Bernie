@@ -3,19 +3,20 @@ use serenity::{
     async_trait,
     prelude::*,
 };
-
-use crate::soundboard::database::DatabaseBackend;
-
-use crate::soundboard::SoundboardBackend;
+use crate::soundboard::{
+    Backend,
+    backend::BackendProvider,
+    database::DatabaseBackend,
+};
 
 mod soundboard;
 
-struct Bot<T: SoundboardBackend> {
+struct Bot<T: BackendProvider> {
     backend: T,
 }
 
 #[async_trait]
-impl<T: SoundboardBackend> EventHandler for Bot<T> {}
+impl<T: BackendProvider> EventHandler for Bot<T> {}
 
 #[tokio::main]
 async fn main() {
@@ -23,9 +24,7 @@ async fn main() {
 
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
 
-    let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
-
-    let backend = DatabaseBackend::new(&uri).await.expect("Couldn't connect to backend.");
+    let backend = Backend::setup().await;
 
     let bot = Bot {
         backend

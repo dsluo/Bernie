@@ -4,14 +4,9 @@ use sqlx::{Error, FromRow, PgPool, Row};
 use sqlx::postgres::PgRow;
 use url::Url;
 
-use crate::{
-    soundboard::{
-        Playback,
-        Sound,
-        Guild,
-        Snowflake
-    },
-    SoundboardBackend,
+use crate::soundboard::{
+    backend::BackendProvider,
+    types::{Guild, Playback, Snowflake, Sound},
 };
 
 pub struct DatabaseBackend {
@@ -38,7 +33,12 @@ impl DatabaseBackend {
 }
 
 #[async_trait]
-impl SoundboardBackend for DatabaseBackend {
+impl BackendProvider for DatabaseBackend {
+    async fn setup() -> Self {
+        let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
+        DatabaseBackend::new(&uri).await.expect("Couldn't connect to backend.")
+    }
+
     async fn ensure_guild(&self, guild_id: Snowflake) -> Result<Guild> {
         Ok(sqlx::query_as::<_, Guild>(
             "insert into guilds \

@@ -1,10 +1,12 @@
 use chrono::Utc;
 use serenity::model::id::{GuildId, UserId};
 
+#[derive(Debug)]
 pub struct Guild {
     pub id: GuildId,
 }
 
+#[derive(Debug)]
 pub struct Sound {
     pub id: i32,
     pub guild_id: GuildId,
@@ -14,6 +16,7 @@ pub struct Sound {
     pub length: chrono::Duration,
 }
 
+#[derive(Debug)]
 pub struct Playback {
     pub id: i32,
     pub started_at: chrono::DateTime<Utc>,

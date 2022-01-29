@@ -72,7 +72,7 @@ impl BackendProvider for DatabaseBackend {
             .bind(name)
             .bind(source.as_str())
             .bind(uploader_id.0 as i64)
-            .bind(length.num_milliseconds())
+            .bind(length.num_milliseconds() as i32)
             .fetch_one(&self.pool)
             .await?)
     }
@@ -191,7 +191,7 @@ impl FromRow<'_, PgRow> for Sound {
     fn from_row(row: &PgRow) -> std::result::Result<Self, Error> {
         let guild_id: i64 = row.try_get("guild_id")?;
         let uploader_id: i64 = row.try_get("uploader_id")?;
-        let length: i64 = row.try_get("length")?;
+        let length: i32 = row.try_get("length")?;
 
         Ok(Sound {
             id: row.try_get("id")?,
@@ -199,7 +199,7 @@ impl FromRow<'_, PgRow> for Sound {
             name: row.try_get("name")?,
             source: row.try_get("source")?,
             uploader_id: UserId(uploader_id as u64),
-            length: chrono::Duration::milliseconds(length),
+            length: chrono::Duration::milliseconds(length as i64),
         })
     }
 }

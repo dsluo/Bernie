@@ -42,18 +42,28 @@ async fn help(
 }
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
-    todo!()
+    match error {
+        poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {:?}", error),
+        poise::FrameworkError::Command { error, ctx } => {
+            log::error!("Error in command `{}`: {:?}", ctx.command().name, error);
+        },
+        error => {
+            if let Err(e) = poise::builtins::on_error(error).await {
+                log::error!("Error while handling error: {:?}", e);
+            }
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     dotenv().ok();
 
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
 
     let mut commands = vec![register(), help()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
-    let commands = commands;
 
 
     let options = poise::FrameworkOptions {
@@ -62,11 +72,7 @@ async fn main() {
             mention_as_prefix: true,
             ..Default::default()
         },
-        on_error: |error| Box::pin(async move {
-            if let Err(e) = poise::builtins::on_error(error).await {
-                log::error!("Error while handling error: {}", e);
-            }
-        }),
+        on_error: |error| Box::pin(on_error(error)),
         ..Default::default()
     };
 

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Duration;
 use serenity::model::id::{GuildId, UserId};
 use url::Url;
 
@@ -12,7 +13,7 @@ pub trait BackendProvider: Sync + Send {
     async fn ensure_guild(&self, guild_id: GuildId) -> anyhow::Result<Guild>;
 
     // sounds
-    async fn add(&self, guild_id: GuildId, uploader_id: UserId, name: &str, source: Url) -> anyhow::Result<Sound>;
+    async fn add(&self, guild_id: GuildId, uploader_id: UserId, name: &str, source: Url, length: Duration) -> anyhow::Result<Sound>;
     async fn list(&self, guild_id: GuildId) -> anyhow::Result<Vec<Sound>>;
     async fn rename(&self, guild_id: GuildId, old_name: &str, new_name: &str) -> anyhow::Result<Sound>;
     async fn remove(&self, guild_id: GuildId, name: &str) -> anyhow::Result<Sound>;

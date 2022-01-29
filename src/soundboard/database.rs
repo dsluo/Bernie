@@ -5,10 +5,9 @@ use sqlx::{
     Error,
     FromRow,
     PgPool,
+    postgres::PgRow,
     Row,
-    postgres::PgRow
 };
-use url::Url;
 
 use crate::soundboard::{
     backend::BackendProvider,
@@ -57,9 +56,14 @@ impl BackendProvider for DatabaseBackend {
             .await?)
     }
 
-    async fn add(&self, guild_id: GuildId, uploader_id: UserId, name: &str, source: Url) -> Result<Sound> {
-        let length = chrono::Duration::zero();
-
+    async fn add(
+        &self,
+        guild_id: GuildId,
+        uploader_id: UserId,
+        name: &str,
+        source: url::Url,
+        length: chrono::Duration,
+    ) -> Result<Sound> {
         Ok(sqlx::query_as::<_, Sound>(
             "insert into sounds(guild_id, name, source, uploader_id, length) \
             values($1, $2, $3, $4, $5) \
@@ -68,7 +72,7 @@ impl BackendProvider for DatabaseBackend {
             .bind(name)
             .bind(source.as_str())
             .bind(uploader_id.0 as i64)
-            .bind(length)
+            .bind(length.num_milliseconds())
             .fetch_one(&self.pool)
             .await?)
     }

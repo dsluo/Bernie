@@ -16,6 +16,8 @@ async-trait = "0.1.52"
 anyhow = "1.0.53"
 
 sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "postgres", "chrono"], optional = true }
+poise = { git = "https://github.com/kangalioo/poise.git" }
+log = "0.4.14"
 
 [dependencies.serenity]
 version = "0.10"
@@ -25,7 +27,7 @@ features = [
     "builder",
     "cache",
     "client",
-    #    "framework",
+    "framework",
     "gateway",
     "http",
     "model",
@@ -34,4 +36,5 @@ features = [
     "rustls_backend",
     # extra features
     "voice",
+    "unstable_discord_api"
 ]

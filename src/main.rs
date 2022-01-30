@@ -1,17 +1,15 @@
 use dotenv::dotenv;
-use crate::soundboard::{
-    Backend,
-    COMMANDS,
-    BackendProvider,
-};
+use sqlx::PgPool;
 
-mod soundboard;
+mod commands;
+
+use commands::COMMANDS;
 
 pub type Error = Box<dyn std::error::Error + Sync + Send>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub struct Data {
-    backend: Backend
+    db: PgPool
 }
 
 /// Register slash commands.
@@ -62,6 +60,9 @@ async fn main() {
 
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
 
+    let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
+    let db = PgPool::connect(&uri).await.expect("Couldn't connect to database.");
+
     let mut commands = vec![register(), help()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
 
@@ -76,13 +77,11 @@ async fn main() {
         ..Default::default()
     };
 
-    let backend = Backend::setup().await;
-
     poise::Framework::build()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move {
             Ok(Data {
-                backend
+                db
             })
         }))
         .options(options)

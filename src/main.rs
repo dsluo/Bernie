@@ -1,15 +1,16 @@
 use dotenv::dotenv;
+use serenity::model::prelude::*;
 use sqlx::PgPool;
 
-mod commands;
-
 use commands::COMMANDS;
+
+mod commands;
 
 pub type Error = Box<dyn std::error::Error + Sync + Send>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub struct Data {
-    db: PgPool
+    db: PgPool,
 }
 
 const OAUTH_SCOPES: [OAuth2Scope; 2] = [OAuth2Scope::Bot, OAuth2Scope::ApplicationsCommands];
@@ -69,7 +70,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {:?}", error),
         poise::FrameworkError::Command { error, ctx } => {
             log::error!("Error in command `{}`: {:?}", ctx.command().name, error);
-        },
+        }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
                 log::error!("Error while handling error: {:?}", e);
@@ -86,11 +87,12 @@ async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
 
     let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
-    let db = PgPool::connect(&uri).await.expect("Couldn't connect to database.");
+    let db = PgPool::connect(&uri)
+        .await
+        .expect("Couldn't connect to database.");
 
     let mut commands = vec![register(), help(), invite()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
-
 
     let options = poise::FrameworkOptions {
         commands,
@@ -104,11 +106,7 @@ async fn main() {
 
     poise::Framework::build()
         .token(token)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move {
-            Ok(Data {
-                db
-            })
-        }))
+        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(Data { db }) }))
         .options(options)
         .run()
         .await

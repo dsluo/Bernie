@@ -1,4 +1,7 @@
-use poise::Command;
+use poise::{
+    serenity_prelude::{Mention, UserId},
+    Command,
+};
 
 use crate::{Context, Data, Error};
 
@@ -63,7 +66,9 @@ async fn add(
         url.to_string(),
         uploader_id.0 as i64,
         length.num_milliseconds() as i32
-    );
+    )
+    .execute(db)
+    .await?;
 
     // todo: actually download or something
 
@@ -132,14 +137,27 @@ async fn rename(
 /// Delete a sound.
 #[poise::command(slash_command, prefix_command)]
 async fn remove(
-    _ctx: Context<'_>,
+    ctx: Context<'_>,
     #[description = "Sound to remove."]
     #[autocomplete = "autocomplete_sound_name"]
-    _name: String,
+    name: String,
 ) -> Result<(), Error> {
-    // "update sounds set deleted_at = current_timestamp \
-    // where guild_id = $1 and name = $2 and deleted_at is null \
-    todo!()
+    let db = &ctx.data().db;
+
+    let guild_id = ctx.guild_id().unwrap();
+
+    sqlx::query!(
+        "update sounds set deleted_at = current_timestamp \
+        where guild_id = $1 and name = $2 and deleted_at is null",
+        guild_id.0 as i64,
+        name
+    )
+    .execute(db)
+    .await?;
+
+    ctx.say("✅").await?;
+
+    Ok(())
 }
 
 /// Play a sound in your current voice channel.
@@ -150,10 +168,22 @@ async fn play(
     #[autocomplete = "autocomplete_sound_name"]
     name: String,
 ) -> Result<(), Error> {
-    // todo!()
-    // "insert into playbacks(sound_id, player_id) \
-    // values($1, $2) \
-    ctx.say(name).await?;
+    let db = &ctx.data().db;
+
+    let guild_id = ctx.guild_id().unwrap();
+    let player_id = ctx.author().id;
+
+    sqlx::query!(
+        "insert into playbacks(sound_id, player_id) \
+        select id, $1 from sounds where guild_id = $2 and name = $3 and deleted_at is null",
+        player_id.0 as i64,
+        guild_id.0 as i64,
+        name
+    )
+    .execute(db)
+    .await?;
+
+    ctx.say("✅").await?;
 
     Ok(())
 }
@@ -167,27 +197,87 @@ async fn random(_ctx: Context<'_>) -> Result<(), Error> {
 /// Stop the currently playing sound.
 #[poise::command(slash_command, prefix_command)]
 async fn stop(_ctx: Context<'_>) -> Result<(), Error> {
-    // "update playbacks set stopper_id = $1, stopped_at = current_timestamp \
-    // where sound_id = $2 and stopped_at is null \
+    // let db = &ctx.data().db;
+
+    // let guild_id = ctx.guild_id().unwrap();
+    // let stopper_id = ctx.author().id;
+
+    // sqlx::query!(
+    //     "with sound_id as ( \
+    //         select id from sounds  \
+    //         where guild_id = $1 and name = $2 and deleted_at is null \
+    //     ) \
+    //     update playbacks set stopper_id = $1, stopped_at = current_timestamp \
+    //     where sound_id = $2 and stopped_at is null",
+    //     guild_id.0 as i64,
+
+    // )
+    // .execute(db)
+    // .await?;
+
+    // ctx.say("✅").await?;
+
+    // Ok(())
+
     todo!()
 }
 
 /// Show sound play history.
 #[poise::command(slash_command, prefix_command)]
 async fn history(
-    _ctx: Context<'_>,
+    ctx: Context<'_>,
     #[description = "Optional sound to get the playback history of."]
     #[autocomplete = "autocomplete_sound_name"]
-    _name: Option<String>,
+    name: Option<String>,
 ) -> Result<(), Error> {
-    // "select playbacks.*, sounds.guild_id from playbacks \
-    // inner join sounds on sounds.id = playbacks.sound_id \
-    // where guild_id = $1 and sound_id = $2 \
-    // order by playbacks.created_at desc"
+    let db = &ctx.data().db;
 
-    // "select playbacks.*, sounds.guild_id from playbacks \
-    // inner join sounds on sounds.id = playbacks.sound_id \
-    // where guild_id = $1 \
-    // order by playbacks.created_at desc"
-    todo!()
+    let guild_id = ctx.guild_id().unwrap();
+
+    // language=PostgreSQL
+    let history: Vec<String> = sqlx::query!(
+        "select playbacks.*, sounds.name from playbacks \
+        inner join sounds on sounds.id = playbacks.sound_id \
+        where sounds.guild_id = $1 and ($2::text is null or sounds.name = $2) \
+        order by playbacks.created_at desc",
+        guild_id.0 as i64,
+        name
+    )
+    .fetch_all(db)
+    .await?
+    .iter()
+    .map(|record| {
+        let name = record.name.to_string();
+        let player: UserId = (record.player_id as u64).into();
+        let stopper: Option<UserId> = record.stopper_id.map(|id| (id as u64).into());
+
+        let created = record.created_at;
+
+        if let Some(stopper) = stopper {
+            let stopped = record.stopped_at.unwrap();
+            let duration = stopped - created;
+            let seconds = duration.num_milliseconds() as f64 / 1000_f64;
+
+            format!(
+                "{} by {}; stopped by {} after {} seconds",
+                name,
+                Mention::from(player),
+                Mention::from(stopper),
+                seconds
+            )
+        } else {
+            format!("{} by {}", name, Mention::from(player))
+        }
+    })
+    .collect();
+
+    let msg = if history.is_empty() {
+        "There's nothing here. Play a sound with /play or add a new sound with /add.".to_owned()
+    } else {
+        history.join("\n")
+    };
+
+    ctx.say(msg).await?;
+
+    Ok(())
 }

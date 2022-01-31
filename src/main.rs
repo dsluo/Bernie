@@ -34,8 +34,29 @@ async fn help(
         command.as_deref(),
         poise::builtins::HelpConfiguration {
             ..Default::default()
-        })
+        },
+    )
+    .await?;
+    Ok(())
+}
+
+/// Get the invite for this bot.
+#[poise::command(slash_command, prefix_command)]
+async fn invite(ctx: Context<'_>) -> Result<(), Error> {
+    let bot = ctx.discord().cache.current_user();
+    let http = &ctx.discord().http;
+
+    let permissions: Permissions = PERMISSIONS
+        .into_iter()
+        .reduce(|total, current| total | current)
+        .unwrap();
+
+    let invite = bot
+        .invite_url_with_oauth2_scopes(http, permissions, &OAUTH_SCOPES)
         .await?;
+
+    ctx.say(invite).await?;
+
     Ok(())
 }
 
@@ -63,7 +84,7 @@ async fn main() {
     let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
     let db = PgPool::connect(&uri).await.expect("Couldn't connect to database.");
 
-    let mut commands = vec![register(), help()];
+    let mut commands = vec![register(), help(), invite()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
 
 

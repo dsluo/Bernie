@@ -15,10 +15,10 @@ create table guilds
     updated_at timestamp with time zone not null default current_timestamp,
     deleted_at timestamp with time zone          default null,
 
-    unique (id, deleted_at)
+    constraint guilds_id_deleted_at_key unique (id, deleted_at)
 );
 
-create index idx_guilds_deleted_at on guilds (deleted_at asc);
+create index guilds_deleted_at_idx on guilds (deleted_at asc);
 
 create trigger set_guilds_updated_at
     before update
@@ -40,11 +40,13 @@ create table sounds
     uploader_id bigint                   not null,
     length      int                      not null,
 
-    foreign key (guild_id) references guilds (id) on delete cascade,
-    unique (guild_id, name, deleted_at)
+    constraint sounds_guild_id_fkey
+        foreign key (guild_id) references guilds (id) on delete cascade,
+    constraint sounds_guild_id_name_deleted_at_key
+        unique (guild_id, name, deleted_at)
 );
 
-create index idx_sounds_deleted_at on sounds (deleted_at asc);
+create index on sounds (deleted_at asc);
 
 create trigger set_sounds_updated_at
     before update
@@ -64,10 +66,11 @@ create table playbacks
     player_id  bigint                   not null,
     stopper_id bigint                            default null,
 
-    foreign key (sound_id) references sounds (id) on delete cascade
+    constraint playbacks_sounds_id_fkey
+        foreign key (sound_id) references sounds (id) on delete cascade
 );
 
-create index idx_playbacks_deleted_at on playbacks (deleted_at asc);
+create index playbacks_deleted_at_idx on playbacks (deleted_at asc);
 
 create trigger set_playbacks_updated_at
     before update

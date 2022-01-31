@@ -8,17 +8,21 @@ default = ["database"]
 database = ["sqlx"]
 
 [dependencies]
-tokio = { version = "~1.15", features = ["full"] }
+tokio = { version = "~1.15", features = ["macros", "rt-multi-thread"] }
 chrono = "0.4.19"
 dotenv = "0.15.0"
 url = "2.2.2"
 async-trait = "0.1.52"
 anyhow = "1.0.53"
-
-sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "postgres", "chrono", "macros"], optional = true }
 poise = { git = "https://github.com/kangalioo/poise.git" }
+songbird = { version = "0.2.1", features = ["yt-dlp"] }
 log = "0.4.14"
 env_logger = "0.9.0"
+
+[dependencies.sqlx]
+version = "0.5.10"
+features = ["runtime-tokio-rustls", "postgres", "chrono", "macros"]
+optional = true
 
 [dependencies.serenity]
 #version = "0.10.10"
@@ -32,7 +36,7 @@ features = [
     "builder",
     "cache",
     "client",
-#    "framework",
+    #    "framework",
     "gateway",
     "http",
     "model",
@@ -41,5 +45,5 @@ features = [
     "rustls_backend",
     # extra features
     "voice",
-    "unstable_discord_api"
+    "unstable_discord_api",
 ]

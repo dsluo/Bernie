@@ -12,6 +12,10 @@ pub struct Data {
     db: PgPool
 }
 
+const OAUTH_SCOPES: [OAuth2Scope; 2] = [OAuth2Scope::Bot, OAuth2Scope::ApplicationsCommands];
+
+const PERMISSIONS: [Permissions; 2] = [Permissions::SPEAK, Permissions::CONNECT];
+
 /// Register slash commands.
 /// No argument to register with current guild; "global" as argument to register globally.
 #[poise::command(prefix_command, hide_in_help)]

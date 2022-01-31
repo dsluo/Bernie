@@ -9,21 +9,33 @@ pub const COMMANDS: [fn() -> Command<Data, Error>; 8] =
     [play, random, stop, add, list, rename, remove, history];
 
 async fn autocomplete_sound_name(
-    _ctx: Context<'_>,
-    _partial: String,
-) -> impl Iterator<Item = String> + '_ {
-    // let results = if let Some(guild_id) = ctx.guild_id() {
-    //     let db = &ctx.data().db;
+    ctx: Context<'_>,
+    partial: String,
+    // ) -> impl Iterator<Item = String> {
+) -> Vec<String> {
+    let db = &ctx.data().db;
 
-    //     db.autocomplete(guild_id, &partial)
-    //         .await?
-    // } else {
-    vec![String::from("asdf")].into_iter()
-    // };
+    let guild_id = ctx.guild_id().unwrap();
 
-    // log::info!("{:?}", results);
+    let result = sqlx::query!(
+        "select name from sounds \
+        where guild_id = $1 and starts_with(name, $2) and deleted_at is null \
+        order by name \
+        limit 25",
+        guild_id.0 as i64,
+        partial
+    )
+    .fetch_all(db)
+    .await;
 
-    // results
+    if let Ok(records) = result {
+        records
+            .iter()
+            .map(|record| record.name.to_string())
+            .collect()
+    } else {
+        vec![]
+    }
 }
 
 async fn ensure_guild_check(ctx: Context<'_>) -> Result<bool, Error> {

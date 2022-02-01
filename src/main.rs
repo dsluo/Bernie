@@ -2,6 +2,8 @@ use dotenv::dotenv;
 use serenity::model::prelude::*;
 use sqlx::PgPool;
 
+use songbird::SerenityInit;
+
 use commands::COMMANDS;
 
 mod commands;
@@ -104,11 +106,17 @@ async fn main() {
         ..Default::default()
     };
 
-    poise::Framework::build()
+    let framework = poise::Framework::build()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(Data { db }) }))
         .options(options)
-        .run()
+        .client_settings(|builder| songbird::register(builder))
+        .build()
         .await
-        .unwrap();
+        .expect("Couldn't build command framework.");
+
+    framework
+        .start()
+        .await
+        .expect("Couldn't start command framework.");
 }

@@ -64,11 +64,13 @@ async fn add(
     #[description = "Where to download the sound from."] source: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
+    let mut transaction = db.begin().await?;
 
     let guild_id = ctx.guild_id().unwrap();
     let uploader_id = ctx.author().id;
     let length = chrono::Duration::zero();
 
+    // try this insert first to make sure the sound doesn't already exist.
     sqlx::query!(
         "insert into sounds(guild_id, name, source, uploader_id, length) \
             values($1, $2, $3, $4, $5)",
@@ -78,11 +80,15 @@ async fn add(
         uploader_id.0 as i64,
         length.num_milliseconds() as i32
     )
-    .execute(db)
+    .execute(&mut transaction)
     .await?;
 
     // todo: actually download or something
+    // let download = songbird::ytdl(&source).await?;
 
+    // let file = tokio::fs::File::create("asdf.txt").await?;
+
+    transaction.commit().await?;
     Ok(())
 }
 
@@ -180,22 +186,61 @@ async fn play(
     name: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
+    let mut transaction = db.begin().await?;
 
     let guild_id = ctx.guild_id().unwrap();
     let player_id = ctx.author().id;
 
+    let sound = sqlx::query!(
+        "select id, source from sounds \
+        where guild_id = $1 and name = $2 and deleted_at is null",
+        guild_id.0 as i64,
+        name,
+    )
+    .fetch_one(&mut transaction)
+    .await?;
+
     sqlx::query!(
         "insert into playbacks(sound_id, player_id) \
-        select id, $1 from sounds where guild_id = $2 and name = $3 and deleted_at is null",
+        values ($1, $2)",
+        sound.id,
         player_id.0 as i64,
-        guild_id.0 as i64,
-        name
     )
-    .execute(db)
+    .execute(&mut transaction)
     .await?;
+
+    let manager = songbird::get(ctx.discord())
+        .await
+        .expect("Expected songbird client in data at initialization.")
+        .clone();
+
+    let handler_lock = if let Some(handler) = manager.get(guild_id.0) {
+        handler
+    } else {
+        let channel = ctx
+            .guild()
+            .ok_or("Not in a guild.")?
+            .voice_states
+            .get(&ctx.author().id)
+            .and_then(|voice_state| voice_state.channel_id)
+            .ok_or("Not in a voice channel.")?;
+
+        let (handler, result) = manager.join(guild_id, channel).await;
+
+        result?;
+
+        handler
+    };
+
+    let mut handler = handler_lock.lock().await;
+
+    let source = songbird::ytdl(sound.source).await?;
+
+    handler.play_source(source);
 
     ctx.say("✅").await?;
 
+    transaction.commit().await?;
     Ok(())
 }
 

@@ -184,7 +184,6 @@ dependencies = [
  "songbird",
  "sqlx",
  "tokio",
- "url",
 ]
 
 [[package]]

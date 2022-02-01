@@ -67,7 +67,6 @@ async fn add(
 
     let guild_id = ctx.guild_id().unwrap();
     let uploader_id = ctx.author().id;
-    let url = url::Url::parse(&source)?;
     let length = chrono::Duration::zero();
 
     sqlx::query!(
@@ -75,7 +74,7 @@ async fn add(
             values($1, $2, $3, $4, $5)",
         guild_id.0 as i64,
         name,
-        url.to_string(),
+        source,
         uploader_id.0 as i64,
         length.num_milliseconds() as i32
     )

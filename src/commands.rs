@@ -1,18 +1,19 @@
+use std::process::Stdio;
+
+use crate::{Context, Data, Error};
 use poise::{
     serenity_prelude::{Mention, UserId},
     Command,
 };
 
-use crate::{Context, Data, Error};
+use anyhow::anyhow;
+use serde_json::Value;
+use tokio::io::AsyncWriteExt;
 
 pub const COMMANDS: [fn() -> Command<Data, Error>; 8] =
     [play, random, stop, add, list, rename, remove, history];
 
-async fn autocomplete_sound_name(
-    ctx: Context<'_>,
-    partial: String,
-    // ) -> impl Iterator<Item = String> {
-) -> Vec<String> {
+async fn autocomplete_sound_name(ctx: Context<'_>, partial: String) -> Vec<String> {
     let db = &ctx.data().db;
 
     let guild_id = ctx.guild_id().unwrap();
@@ -40,16 +41,27 @@ async fn autocomplete_sound_name(
 
 async fn ensure_guild_check(ctx: Context<'_>) -> Result<bool, Error> {
     if let Some(guild_id) = ctx.guild_id() {
+        let guild_id = guild_id.0 as i64;
         let db = &ctx.data().db;
+        let storage_dir = &ctx.data().storage_dir;
 
         sqlx::query!(
             "insert into guilds \
             values($1) \
             on conflict do nothing",
-            guild_id.0 as i64
+            guild_id
         )
         .execute(db)
         .await?;
+
+        let guild_dir = storage_dir.join(guild_id.to_string());
+
+        if !guild_dir.is_dir() {
+            tokio::fs::create_dir(&guild_dir)
+                .await
+                .expect(&format!("Couldn't create guild directory: {:?}", guild_dir));
+        }
+
         Ok(true)
     } else {
         Ok(false)
@@ -67,27 +79,105 @@ async fn add(
     let mut transaction = db.begin().await?;
 
     let guild_id = ctx.guild_id().unwrap();
+    let guild_id = guild_id.0 as i64;
     let uploader_id = ctx.author().id;
-    let length = chrono::Duration::zero();
+    let uploader_id = uploader_id.0 as i64;
 
     // try this insert first to make sure the sound doesn't already exist.
-    sqlx::query!(
+    let sound_id = sqlx::query!(
         "insert into sounds(guild_id, name, source, uploader_id, length) \
-            values($1, $2, $3, $4, $5)",
-        guild_id.0 as i64,
+            values($1, $2, $3, $4, $5)
+            returning id",
+        guild_id,
         name,
         source,
-        uploader_id.0 as i64,
-        length.num_milliseconds() as i32
+        uploader_id,
+        0 // we calculate this later
+    )
+    .map(|record| record.id)
+    .fetch_one(&mut transaction)
+    .await?;
+
+    // let discord know we're not dead.
+    let _ = ctx.defer_or_broadcast().await;
+
+    // todo: actually download or something
+    let ytdl_args = [
+        "--quiet",
+        "--print-json",
+        "-f",
+        "webm[abr>0]/bestaudio/best",
+        "-R",
+        "infinite",
+        "--no-playlist",
+        "--ignore-config",
+        "--no-warnings",
+        &source,
+        "-o",
+        "-",
+    ];
+
+    // todo: make this so that it writes directly to file rather than to memory, then to file.
+    // download file, get its extension, write it to `<storage dir>/<guild id>/<sound name>.<extension>`
+    let ytdl_output = tokio::process::Command::new("yt-dlp")
+        .args(&ytdl_args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
+
+    let metadata: Value = serde_json::from_slice(&ytdl_output.stderr)?;
+    let download = &ytdl_output.stdout;
+
+    let extension = metadata["ext"].as_str().unwrap_or_default();
+
+    let guild_dir = &ctx.data().storage_dir.join(guild_id.to_string());
+    let sound_path = guild_dir.join(&name).with_extension(extension);
+
+    log::debug!("{:#?}", sound_path);
+    if sound_path.is_file() {
+        panic!("Sound path already exists: {:?}", sound_path);
+    }
+    let mut file = tokio::fs::File::create(&sound_path).await?;
+
+    file.write_all(download).await?;
+
+    // get the sound's length.
+    // using ffprobe here because `metadata["duration"]` is unreliable
+    static FFPROBE_ARGS: [&str; 6] = [
+        "-v",
+        "quiet",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+    ];
+
+    let ffprobe_output = tokio::process::Command::new("ffprobe")
+        .arg(&sound_path)
+        .args(&FFPROBE_ARGS)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
+
+    let length = std::str::from_utf8(&ffprobe_output.stdout)?
+        .trim()
+        .parse::<f64>()?
+        * 1000.0;
+
+    sqlx::query!(
+        "update sounds set length = $1 \
+        where id = $2",
+        length as i32,
+        sound_id
     )
     .execute(&mut transaction)
     .await?;
 
-    // todo: actually download or something
-    // let download = songbird::ytdl(&source).await?;
-
-    // let file = tokio::fs::File::create("asdf.txt").await?;
-
+    // we're done here.
     transaction.commit().await?;
     Ok(())
 }
@@ -219,11 +309,11 @@ async fn play(
     } else {
         let channel = ctx
             .guild()
-            .ok_or("Not in a guild.")?
+            .ok_or(anyhow!("Not in a guild."))?
             .voice_states
             .get(&ctx.author().id)
             .and_then(|voice_state| voice_state.channel_id)
-            .ok_or("Not in a voice channel.")?;
+            .ok_or(anyhow!("Not in a voice channel."))?;
 
         let (handler, result) = manager.join(guild_id, channel).await;
 

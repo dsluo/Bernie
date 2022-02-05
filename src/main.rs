@@ -1,18 +1,19 @@
+use std::path::PathBuf;
+
 use dotenv::dotenv;
 use serenity::model::prelude::*;
 use sqlx::PgPool;
-
-use songbird::SerenityInit;
 
 use commands::COMMANDS;
 
 mod commands;
 
-pub type Error = Box<dyn std::error::Error + Sync + Send>;
+pub type Error = anyhow::Error;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub struct Data {
     db: PgPool,
+    storage_dir: PathBuf,
 }
 
 const OAUTH_SCOPES: [OAuth2Scope; 2] = [OAuth2Scope::Bot, OAuth2Scope::ApplicationsCommands];
@@ -70,9 +71,9 @@ async fn invite(ctx: Context<'_>) -> Result<(), Error> {
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {:?}", error),
-        poise::FrameworkError::Command { error, ctx } => {
-            log::error!("Error in command `{}`: {:#?}", ctx.command().name, error);
-        }
+        // poise::FrameworkError::Command { error, ctx } => {
+        //     log::error!("Error in command `{}`: {:#?}", ctx.command().name, error);
+        // }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
                 log::error!("Error while handling error: {:#?}", e);
@@ -83,15 +84,24 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
     dotenv().ok();
+    env_logger::init();
 
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
+    let db_uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
+    let storage_dir = std::env::var("STORAGE_DIR").expect("Expected STORAGE_DIR in environment.");
 
-    let uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
-    let db = PgPool::connect(&uri)
+    let db = PgPool::connect(&db_uri)
         .await
         .expect("Couldn't connect to database.");
+
+    let storage_dir = PathBuf::from(&storage_dir);
+    tokio::fs::create_dir_all(&storage_dir)
+        .await
+        .expect(&format!(
+            "Couldn't create storage directory: {:?}",
+            &storage_dir
+        ));
 
     let mut commands = vec![register(), help(), invite()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
@@ -108,7 +118,9 @@ async fn main() {
 
     let framework = poise::Framework::build()
         .token(token)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(Data { db }) }))
+        .user_data_setup(move |_ctx, _ready, _framework| {
+            Box::pin(async move { Ok(Data { db, storage_dir }) })
+        })
         .options(options)
         .client_settings(|builder| songbird::register(builder))
         .build()

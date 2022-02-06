@@ -94,10 +94,9 @@ async fn add(
     // let discord know we're not dead.
     let _ = ctx.defer_or_broadcast().await;
 
-    // todo: actually download or something
     let ytdl_args = [
         "--quiet",
-        "--print-json",
+        // "--print-json",
         "-f",
         "webm[abr>0]/bestaudio/best",
         "-R",
@@ -111,22 +110,22 @@ async fn add(
     ];
 
     // todo: make this so that it writes directly to file rather than to memory, then to file.
-    // download file, get its extension, write it to `<storage dir>/<guild id>/<sound name>.<extension>`
+    // download file and write it to `<storage dir>/<guild id>/<sound name>`
     let ytdl_output = tokio::process::Command::new("yt-dlp")
         .args(&ytdl_args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
+        // .stderr(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?
+        .wait_with_output()
         .await?;
 
-    let metadata: Value = serde_json::from_slice(&ytdl_output.stderr)?;
+    // let metadata: Value = serde_json::from_slice(&ytdl_output.stderr)?;
     let download = &ytdl_output.stdout;
 
-    let extension = metadata["ext"].as_str().unwrap_or_default();
-
     let guild_dir = &ctx.data().storage_dir.join(guild_id.to_string());
-    let sound_path = guild_dir.join(&name).with_extension(extension);
+    let sound_path = guild_dir.join(&name);
 
     log::debug!("{:#?}", sound_path);
     if sound_path.is_file() {

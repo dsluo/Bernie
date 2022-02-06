@@ -18,7 +18,7 @@ async fn autocomplete_sound_name(ctx: Context<'_>, partial: String) -> Vec<Strin
 
     let guild_id = ctx.guild_id().unwrap();
 
-    let result = sqlx::query!(
+    sqlx::query!(
         "select name from sounds \
         where guild_id = $1 and starts_with(name, $2) and deleted_at is null \
         order by name \
@@ -26,17 +26,10 @@ async fn autocomplete_sound_name(ctx: Context<'_>, partial: String) -> Vec<Strin
         guild_id.0 as i64,
         partial
     )
+    .map(|record| record.name.to_string())
     .fetch_all(db)
-    .await;
-
-    if let Ok(records) = result {
-        records
-            .iter()
-            .map(|record| record.name.to_string())
-            .collect()
-    } else {
-        vec![]
-    }
+    .await
+    .unwrap_or_default()
 }
 
 async fn ensure_guild_check(ctx: Context<'_>) -> Result<bool, Error> {
@@ -195,11 +188,9 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
         order by name",
         guild_id.0 as i64
     )
-    .fetch_all(db)
-    .await?
-    .iter()
     .map(|record| record.name.to_string())
-    .collect();
+    .fetch_all(db)
+    .await?;
 
     let msg = if sounds.is_empty() {
         "There's nothing here. Try adding a sound using /add.".to_owned()
@@ -389,9 +380,6 @@ async fn history(
         guild_id.0 as i64,
         name
     )
-    .fetch_all(db)
-    .await?
-    .iter()
     .map(|record| {
         let name = record.name.to_string();
         let player: UserId = (record.player_id as u64).into();
@@ -415,7 +403,8 @@ async fn history(
             format!("{} by {}", name, Mention::from(player))
         }
     })
-    .collect();
+    .fetch_all(db)
+    .await?;
 
     let msg = if history.is_empty() {
         "There's nothing here. Play a sound with /play or add a new sound with /add.".to_owned()

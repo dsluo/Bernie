@@ -7,7 +7,6 @@ use poise::{
 };
 
 use anyhow::anyhow;
-use serde_json::Value;
 use tokio::io::AsyncWriteExt;
 
 pub const COMMANDS: [fn() -> Command<Data, Error>; 8] =
@@ -171,6 +170,7 @@ async fn add(
 
     // we're done here.
     transaction.commit().await?;
+    ctx.say("✅").await?;
     Ok(())
 }
 
@@ -196,8 +196,8 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
     } else {
         sounds.join("\n")
     };
-    ctx.say(msg).await?;
 
+    ctx.say(msg).await?;
     Ok(())
 }
 
@@ -214,8 +214,6 @@ async fn rename(
 
     let guild_id = ctx.guild_id().unwrap();
 
-    // let _sound = db.rename(guild_id, &old_name, &new_name).await?;
-
     sqlx::query!(
         "update sounds set name = $1 \
         where guild_id = $2 and name = $3 and deleted_at is null",
@@ -227,7 +225,6 @@ async fn rename(
     .await?;
 
     ctx.say("✅").await?;
-
     Ok(())
 }
 
@@ -253,7 +250,6 @@ async fn remove(
     .await?;
 
     ctx.say("✅").await?;
-
     Ok(())
 }
 
@@ -318,21 +314,21 @@ async fn play(
 
     handler.play_source(source);
 
-    ctx.say("✅").await?;
-
     transaction.commit().await?;
+    ctx.say("✅").await?;
     Ok(())
 }
 
 /// Play a random sound in your current voice channel.
 #[poise::command(slash_command, prefix_command)]
-async fn random(_ctx: Context<'_>) -> Result<(), Error> {
-    todo!()
+async fn random(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.say("✅").await?;
+    Ok(())
 }
 
 /// Stop the currently playing sound.
 #[poise::command(slash_command, prefix_command)]
-async fn stop(_ctx: Context<'_>) -> Result<(), Error> {
+async fn stop(ctx: Context<'_>) -> Result<(), Error> {
     // let db = &ctx.data().db;
 
     // let guild_id = ctx.guild_id().unwrap();
@@ -351,11 +347,8 @@ async fn stop(_ctx: Context<'_>) -> Result<(), Error> {
     // .execute(db)
     // .await?;
 
-    // ctx.say("✅").await?;
-
-    // Ok(())
-
-    todo!()
+    ctx.say("✅").await?;
+    Ok(())
 }
 
 /// Show sound play history.
@@ -412,6 +405,5 @@ async fn history(
     };
 
     ctx.say(msg).await?;
-
     Ok(())
 }

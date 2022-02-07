@@ -3,11 +3,11 @@ use poise::Command;
 use crate::{Data, Error};
 
 mod meta;
-mod sounds;
 mod playbacks;
+mod sounds;
 
-use playbacks::{play, random, stop, history};
-use sounds::{add, list, rename, remove};
+use playbacks::{history, play, random, stop};
+use sounds::{add, list, remove, rename};
 
 pub const COMMANDS: [fn() -> Command<Data, Error>; 8] =
     [play, random, stop, add, list, rename, remove, history];

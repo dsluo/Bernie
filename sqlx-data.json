@@ -1,0 +1,211 @@
+{
+  "db": "PostgreSQL",
+  "0edd1ed4393583a28aa6c075dfd0282fcb69bc0496b111d5cee11e17dc797bce": {
+    "query": "insert into sounds(guild_id, name, source, uploader_id, length) values($1, $2, $3, $4, $5)\n            returning id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Text",
+          "Int8",
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "11a173e6b22875ec5f7c27b69280f1f2e16235c344f860a4aa1254123b3c184c": {
+    "query": "update sounds set name = $1 where guild_id = $2 and name = $3 and deleted_at is null",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "26fdc1c90013189507396cda57f5df86a2eb9d7871c944b837bcebf95f44c923": {
+    "query": "insert into playbacks(sound_id, player_id) select id, $1 from sounds where guild_id = $2 and name = $3 and deleted_at is null\n        returning playbacks.id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "46b0f5f1978a3eb4720a77419029de778b0a29058b6707a02c52aba3563d7370": {
+    "query": "select name from sounds where guild_id = $1 and deleted_at is null order by name",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "64c584a34fc50ed46333418021cae73317f5084b6c7d6b7be146c8d1d34737d6": {
+    "query": "select playbacks.*, sounds.name from playbacks inner join sounds on sounds.id = playbacks.sound_id where sounds.guild_id = $1 and ($2::text is null or sounds.name = $2) order by playbacks.created_at desc",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 2,
+          "name": "updated_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 3,
+          "name": "deleted_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "stopped_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 5,
+          "name": "sound_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 6,
+          "name": "player_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 7,
+          "name": "stopper_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 8,
+          "name": "name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
+  "803cf2017b1c299df0f9f2e7437da9aac9ea52154a1ff6b3e3ee4cfbc2a2be46": {
+    "query": "update sounds set deleted_at = current_timestamp where guild_id = $1 and name = $2 and deleted_at is null",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "8500d5e7a7e9bfbcc68f7c6ca0ca362f825247342a2bb44961166c88ca4b2f52": {
+    "query": "select name from sounds where guild_id = $1 and starts_with(name, $2) and deleted_at is null order by name limit 25",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "b102da4b5b3abf341568da23dff60bd7f7d3d70f0f0575958f8b32ba5072c2b9": {
+    "query": "update sounds set length = $1 where id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "c137a585b076f53d1acdd2583fe487db10b5f26c4bfef4f4a3f49399b7c2a592": {
+    "query": "insert into guilds values($1) on conflict do nothing",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  }
+}

@@ -138,7 +138,7 @@ pub(super) async fn list(ctx: Context<'_>) -> Result<(), Error> {
         order by name",
         guild_id.0 as i64
     )
-    .map(|record| record.name.to_string())
+    .map(|record| record.name)
     .fetch_all(db)
     .await?;
 

@@ -98,10 +98,7 @@ async fn main() {
     let storage_dir = PathBuf::from(&storage_dir);
     tokio::fs::create_dir_all(&storage_dir)
         .await
-        .expect(&format!(
-            "Couldn't create storage directory: {:?}",
-            &storage_dir
-        ));
+        .unwrap_or_else(|_| panic!("Couldn't create storage directory: {:?}", &storage_dir));
 
     let mut commands = vec![register(), help(), invite()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
@@ -122,7 +119,7 @@ async fn main() {
             Box::pin(async move { Ok(Data { db, storage_dir }) })
         })
         .options(options)
-        .client_settings(|builder| songbird::register(builder))
+        .client_settings(songbird::register)
         .build()
         .await
         .expect("Couldn't build command framework.");

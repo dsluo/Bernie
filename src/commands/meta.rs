@@ -13,7 +13,7 @@ pub(super) async fn autocomplete_sound_name(ctx: Context<'_>, partial: String) -
         guild_id.0 as i64,
         partial
     )
-    .map(|record| record.name.to_string())
+    .map(|record| record.name)
     .fetch_all(db)
     .await
     .unwrap_or_default()
@@ -39,7 +39,7 @@ pub(super) async fn ensure_guild_check(ctx: Context<'_>) -> Result<bool, Error> 
         if !guild_dir.is_dir() {
             tokio::fs::create_dir(&guild_dir)
                 .await
-                .expect(&format!("Couldn't create guild directory: {:?}", guild_dir));
+                .unwrap_or_else(|_| panic!("Couldn't create guild directory: {:?}", guild_dir));
         }
 
         Ok(true)

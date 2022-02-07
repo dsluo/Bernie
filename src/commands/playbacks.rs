@@ -17,7 +17,7 @@ pub(super) async fn play(
     let guild_id = ctx.guild_id().unwrap();
     let player_id = ctx.author().id;
 
-    let playback_id = sqlx::query!(
+    let _playback_id = sqlx::query!(
         "insert into playbacks(sound_id, player_id) \
         select id, $1 from sounds where guild_id = $2 and name = $3 and deleted_at is null
         returning playbacks.id",

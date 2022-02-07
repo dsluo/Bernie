@@ -237,18 +237,31 @@ async fn remove(
     name: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
+    let mut transaction = db.begin().await?;
+    let storage_dir = &ctx.data().storage_dir;
 
     let guild_id = ctx.guild_id().unwrap();
 
-    sqlx::query!(
+    let result = sqlx::query!(
         "update sounds set deleted_at = current_timestamp \
         where guild_id = $1 and name = $2 and deleted_at is null",
         guild_id.0 as i64,
         name
     )
-    .execute(db)
+    .execute(&mut transaction)
     .await?;
 
+    if result.rows_affected() != 1 {
+        // todo: better errors
+        return Err(anyhow!(
+            "non-1 rows updated for remove. sound probably doesn't exist."
+        ));
+    }
+
+    let file = storage_dir.join(name);
+    tokio::fs::remove_file(file).await?;
+
+    transaction.commit().await?;
     ctx.say("✅").await?;
     Ok(())
 }

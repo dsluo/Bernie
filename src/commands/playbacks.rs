@@ -11,27 +11,22 @@ pub(super) async fn play(
     name: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
+    let storage_dir = &ctx.data().storage_dir;
     let mut transaction = db.begin().await?;
 
     let guild_id = ctx.guild_id().unwrap();
     let player_id = ctx.author().id;
 
-    let sound = sqlx::query!(
-        "select id, source from sounds \
-        where guild_id = $1 and name = $2 and deleted_at is null",
-        guild_id.0 as i64,
-        name,
-    )
-    .fetch_one(&mut transaction)
-    .await?;
-
-    sqlx::query!(
+    let playback_id = sqlx::query!(
         "insert into playbacks(sound_id, player_id) \
-        values ($1, $2)",
-        sound.id,
+        select id, $1 from sounds where guild_id = $2 and name = $3 and deleted_at is null
+        returning playbacks.id",
         player_id.0 as i64,
+        guild_id.0 as i64,
+        &name
     )
-    .execute(&mut transaction)
+    .map(|record| record.id)
+    .fetch_one(&mut transaction)
     .await?;
 
     let manager = songbird::get(ctx.discord())
@@ -39,8 +34,9 @@ pub(super) async fn play(
         .expect("Expected songbird client in data at initialization.")
         .clone();
 
-    let handler_lock = if let Some(handler) = manager.get(guild_id.0) {
-        handler
+    // todo: change this to manager.get_or_insert and always attempt to join author's voice channel.
+    let call_lock = if let Some(call) = manager.get(guild_id.0) {
+        call
     } else {
         let channel = ctx
             .guild()
@@ -50,18 +46,19 @@ pub(super) async fn play(
             .and_then(|voice_state| voice_state.channel_id)
             .ok_or(anyhow!("Not in a voice channel."))?;
 
-        let (handler, result) = manager.join(guild_id, channel).await;
+        let (call, result) = manager.join(guild_id, channel).await;
 
         result?;
 
-        handler
+        call
     };
 
-    let mut handler = handler_lock.lock().await;
+    let mut call = call_lock.lock().await;
 
-    let source = songbird::ytdl(sound.source).await?;
+    let file = storage_dir.join(guild_id.0.to_string()).join(name);
+    let source = songbird::ffmpeg(file).await?;
 
-    handler.play_source(source);
+    call.play_source(source);
 
     transaction.commit().await?;
     ctx.say("✅").await?;

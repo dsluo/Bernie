@@ -8,12 +8,7 @@ default = ["database"]
 database = ["sqlx"]
 
 [dependencies]
-tokio = { version = "~1.15", features = [
-    "macros",
-    "rt-multi-thread",
-    "process",
-    "fs",
-] }
+tokio = { version = "~1.15", features = ["full"] }
 chrono = "0.4.19"
 dotenv = "0.15.0"
 async-trait = "0.1.52"

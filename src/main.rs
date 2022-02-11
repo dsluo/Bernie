@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use dotenv::dotenv;
 use serenity::model::prelude::*;
 use sqlx::PgPool;
 
-use commands::COMMANDS;
+use commands::{TrackManager, COMMANDS};
 
 mod commands;
 
@@ -14,6 +14,17 @@ pub type Context<'a> = poise::Context<'a, Data, Error>;
 pub struct Data {
     db: PgPool,
     storage_dir: PathBuf,
+    track_manager: TrackManager,
+}
+
+impl Data {
+    pub fn new<P: AsRef<Path>>(db: PgPool, storage_dir: P) -> Self {
+        Self {
+            db,
+            storage_dir: storage_dir.as_ref().to_path_buf(),
+            track_manager: TrackManager::new(),
+        }
+    }
 }
 
 const OAUTH_SCOPES: [OAuth2Scope; 2] = [OAuth2Scope::Bot, OAuth2Scope::ApplicationsCommands];
@@ -21,7 +32,7 @@ const OAUTH_SCOPES: [OAuth2Scope; 2] = [OAuth2Scope::Bot, OAuth2Scope::Applicati
 const PERMISSIONS: [Permissions; 2] = [Permissions::SPEAK, Permissions::CONNECT];
 
 /// Register slash commands.
-/// No argument to register with current guild; "global" as argument to register globally.
+/// No argument to register with current guild; `global` as argument to register globally.
 #[poise::command(prefix_command, hide_in_help)]
 async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error> {
     poise::builtins::register_application_commands(ctx, global).await?;
@@ -116,7 +127,7 @@ async fn main() {
     let framework = poise::Framework::build()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| {
-            Box::pin(async move { Ok(Data { db, storage_dir }) })
+            Box::pin(async move { Ok(Data::new(db, storage_dir)) })
         })
         .options(options)
         .client_settings(songbird::register)

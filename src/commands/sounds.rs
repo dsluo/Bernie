@@ -162,19 +162,34 @@ pub(super) async fn rename(
     #[description = "New name for the sound."] new_name: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
+    let mut transaction = db.begin().await?;
+    let storage_dir = &ctx.data().storage_dir;
 
     let guild_id = ctx.guild_id().unwrap();
 
-    sqlx::query!(
+    let result = sqlx::query!(
         "update sounds set name = $1 \
         where guild_id = $2 and name = $3 and deleted_at is null",
         new_name,
         guild_id.0 as i64,
         old_name
     )
-    .execute(db)
+    .execute(&mut transaction)
     .await?;
 
+    if result.rows_affected() != 1 {
+        // todo: better errors
+        return Err(anyhow!(
+            "non-1 rows updated for remove. sound probably doesn't exist."
+        ));
+    }
+
+    let old_path = storage_dir.join(old_name);
+    let new_path = storage_dir.join(new_name);
+
+    tokio::fs::rename(old_path, new_path).await?;
+
+    transaction.commit().await?;
     ctx.say("✅").await?;
     Ok(())
 }

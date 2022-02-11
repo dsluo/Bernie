@@ -31,6 +31,5 @@ repos:
         description: Prepare sqlx-data.json for offline compiliation.
         entry: cargo sqlx prepare
         language: system
-        types: [rust, sql]
         pass_filenames: false
         stages: [push]

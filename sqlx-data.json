@@ -183,6 +183,19 @@
       ]
     }
   },
+  "894f65cbabf727418119bf8a32434b88ae0d37b8212aab214eeda5758fd88ecd": {
+    "query": "update playbacks set stopper_id = $1, stopped_at = current_timestamp from (select unnest($2::int[]) as id) as stopped where playbacks.id = stopped.id",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4Array"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "b102da4b5b3abf341568da23dff60bd7f7d3d70f0f0575958f8b32ba5072c2b9": {
     "query": "update sounds set length = $1 where id = $2",
     "describe": {

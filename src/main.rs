@@ -121,6 +121,14 @@ async fn main() {
             ..Default::default()
         },
         on_error: |error| Box::pin(on_error(error)),
+        listener: move |_ctx, event, _framework, _data| {
+            Box::pin(async move {
+                if let poise::Event::Ready { .. } = event {
+                    log::info!("Ready.")
+                };
+                Ok(())
+            })
+        },
         ..Default::default()
     };
 

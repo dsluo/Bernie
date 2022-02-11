@@ -96,25 +96,14 @@ pub(super) async fn play(
         .expect("Expected songbird client in data at initialization.")
         .clone();
 
-    // todo: change this to manager.get_or_insert and always attempt to join author's voice channel.
-    let call_lock = if let Some(call) = manager.get(guild_id.0) {
-        call
-    } else {
-        let channel = ctx
-            .guild()
-            .ok_or(anyhow!("Not in a guild."))?
-            .voice_states
-            .get(&ctx.author().id)
-            .and_then(|voice_state| voice_state.channel_id)
-            .ok_or(anyhow!("Not in a voice channel."))?;
-
-        let (call, result) = manager.join(guild_id, channel).await;
-
-        result?;
-
-        call
-    };
-
+    let call_lock = manager.get_or_insert(guild_id.0);
+    let channel = ctx
+        .guild()
+        .ok_or(anyhow!("Not in a guild."))?
+        .voice_states
+        .get(&ctx.author().id)
+        .and_then(|voice_state| voice_state.channel_id)
+        .ok_or(anyhow!("Not in a voice channel."))?;
     let mut call = call_lock.lock().await;
 
     let file = storage_dir.join(guild_id.0.to_string()).join(name);
@@ -130,6 +119,7 @@ pub(super) async fn play(
         .register_playback(guild_id, playback_id, track_handle)
         .await;
 
+    call.join(channel).await?;
     call.play(track);
 
     transaction.commit().await?;

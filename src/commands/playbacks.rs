@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use async_trait::async_trait;
 use poise::serenity_prelude::{GuildId, Mention, UserId};
 use songbird::tracks::TrackHandle;
 use tokio::sync::Mutex;
@@ -48,21 +47,6 @@ impl TrackManager {
         }
 
         Ok(stopped)
-    }
-}
-
-struct PlaybackFinisher;
-
-#[async_trait]
-impl songbird::EventHandler for PlaybackFinisher {
-    async fn act(&self, ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
-        log::debug!("{:#?}", ctx);
-        // todo: in what cases does this slice contain >1 `(&TrackState, &TrackHandle)`?
-        if let songbird::EventContext::Track(tracks) = ctx {
-            log::debug!("{:#?}", tracks);
-        }
-
-        None
     }
 }
 
@@ -112,9 +96,6 @@ pub(super) async fn play(
     let source = songbird::ffmpeg(file).await?;
 
     let (track, track_handle) = songbird::create_player(source);
-
-    use songbird::{Event, TrackEvent};
-    track_handle.add_event(Event::Track(TrackEvent::End), PlaybackFinisher)?;
 
     ctx.data()
         .track_manager

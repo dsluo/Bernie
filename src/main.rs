@@ -90,6 +90,40 @@ async fn invite(ctx: Context<'_>) -> Result<(), Error> {
 
     Ok(())
 }
+/// Get info about the bot.
+#[poise::command(slash_command, prefix_command)]
+async fn about(ctx: Context<'_>) -> Result<(), Error> {
+    // todo: add library information.
+    let author = {
+        // we're (i'm) going to assume only one author.
+        let original = env!("CARGO_PKG_AUTHORS");
+        if let Some((name, _)) = original.split_once(" ") {
+            name
+        } else {
+            original
+        }
+        .trim()
+    };
+
+    let about = format!(
+        "{name} v{version}\n\
+        by `{author}`\n\
+        source: {repo}",
+        name = env!("CARGO_PKG_NAME"),
+        version = env!("CARGO_PKG_VERSION"),
+        author = author,
+        repo = env!("CARGO_PKG_REPOSITORY"),
+    );
+
+    let message = if let Ok(invite) = get_invite(ctx).await {
+        about + "\ninvite: " + invite
+    } else {
+        about.to_owned()
+    };
+
+    ctx.say(message).await?;
+    Ok(())
+}
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     log::warn!("Encountered error: {:#?}", error);
@@ -133,7 +167,7 @@ async fn do_main() {
         .unwrap_or_else(|_| panic!("Couldn't create storage directory: {:?}", &storage_dir));
     log::debug!("Storage directory at {:?} created.", storage_dir);
 
-    let mut commands = vec![register(), help(), invite()];
+    let mut commands = vec![register(), help(), invite(), about()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
     log::debug!(
         "Found commands: {:?}.",

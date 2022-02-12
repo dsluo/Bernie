@@ -1,7 +1,13 @@
 [package]
 name = "bernie"
-version = "0.1.0"
+version = "0.1.0-beta"
 edition = "2021"
+authors = ["dsluo <me@dsluo.dev>"]
+description = "A soundboard for Discord"
+homepage = "https://github.com/dsluo/Bernie"
+repository = "https://github.com/dsluo/Bernie"
+license = "MIT"
+keywords = ["discord", "bot", "voice", "sound"]
 
 [features]
 default = ["database"]

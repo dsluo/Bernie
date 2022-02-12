@@ -126,7 +126,7 @@ async fn do_main() {
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
     log::debug!(
         "Found commands: {:?}.",
-        commands.iter().map(|c| c.name).collect::<String>()
+        commands.iter().map(|c| c.name).collect::<Vec<&str>>()
     );
 
     let options = poise::FrameworkOptions {

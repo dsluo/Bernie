@@ -143,8 +143,10 @@ async fn main() {
         .await
         .expect("Couldn't build command framework.");
 
-    framework
-        .start()
-        .await
-        .expect("Couldn't start command framework.");
+    tokio::select! {
+        v = tokio::signal::ctrl_c() => v.expect("Failed to listen to CTRL-C."),
+        v = framework.start() => v.expect("Couldn't start command framework.")
+    };
+
+    log::info!("Goodbye.");
 }

@@ -32,4 +32,5 @@ repos:
         entry: cargo sqlx prepare
         language: system
         pass_filenames: false
+        types: [rust, sql]
         stages: [push]

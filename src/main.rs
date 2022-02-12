@@ -5,6 +5,7 @@ use serenity::model::prelude::*;
 use sqlx::PgPool;
 
 use commands::{TrackManager, COMMANDS};
+use tokio::sync::OnceCell;
 
 mod commands;
 
@@ -60,22 +61,32 @@ async fn help(
     Ok(())
 }
 
+static INVITE: OnceCell<String> = OnceCell::const_new();
+
+async fn get_invite(ctx: Context<'_>) -> Result<&'static String, Error> {
+    INVITE
+        .get_or_try_init(|| async {
+            let bot = ctx.discord().cache.current_user();
+            let http = &ctx.discord().http;
+
+            let permissions: Permissions = PERMISSIONS
+                .into_iter()
+                .reduce(|total, current| total | current)
+                .unwrap();
+
+            let invite = bot
+                .invite_url_with_oauth2_scopes(http, permissions, &OAUTH_SCOPES)
+                .await?;
+
+            Ok(invite)
+        })
+        .await
+}
+
 /// Get the invite for this bot.
 #[poise::command(slash_command, prefix_command)]
 async fn invite(ctx: Context<'_>) -> Result<(), Error> {
-    let bot = ctx.discord().cache.current_user();
-    let http = &ctx.discord().http;
-
-    let permissions: Permissions = PERMISSIONS
-        .into_iter()
-        .reduce(|total, current| total | current)
-        .unwrap();
-
-    let invite = bot
-        .invite_url_with_oauth2_scopes(http, permissions, &OAUTH_SCOPES)
-        .await?;
-
-    ctx.say(invite).await?;
+    ctx.say(get_invite(ctx).await?).await?;
 
     Ok(())
 }

@@ -12,6 +12,8 @@ use crate::{Context, Error};
 type PlaybackId = i32;
 
 type AtomicHashMap<K, V> = Arc<Mutex<HashMap<K, V>>>;
+
+#[derive(Debug)]
 pub struct TrackManager {
     handles: AtomicHashMap<GuildId, Vec<(PlaybackId, TrackHandle)>>,
 }

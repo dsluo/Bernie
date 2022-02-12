@@ -11,6 +11,7 @@ mod commands;
 pub type Error = anyhow::Error;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
+#[derive(Debug)]
 pub struct Data {
     db: PgPool,
     storage_dir: PathBuf,
@@ -80,6 +81,7 @@ async fn invite(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+    log::warn!("Encountered error: {:#?}", error);
     match error {
         poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {:?}", error),
         // poise::FrameworkError::Command { error, ctx } => {
@@ -97,6 +99,8 @@ async fn do_main() {
     dotenv().ok();
     env_logger::init();
 
+    log::debug!("Initializing...");
+
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
     let db_uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");
     let storage_dir = std::env::var("STORAGE_DIR").expect("Expected STORAGE_DIR in environment.");
@@ -104,19 +108,26 @@ async fn do_main() {
     let db = PgPool::connect(&db_uri)
         .await
         .expect("Couldn't connect to database.");
+    log::debug!("Connected to database.");
 
     sqlx::migrate!()
         .run(&db)
         .await
         .expect("Error while migrating database.");
+    log::debug!("Database migrated.");
 
     let storage_dir = PathBuf::from(&storage_dir);
     tokio::fs::create_dir_all(&storage_dir)
         .await
         .unwrap_or_else(|_| panic!("Couldn't create storage directory: {:?}", &storage_dir));
+    log::debug!("Storage directory at {:?} created.", storage_dir);
 
     let mut commands = vec![register(), help(), invite()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));
+    log::debug!(
+        "Found commands: {:?}.",
+        commands.iter().map(|c| c.name).collect::<String>()
+    );
 
     let options = poise::FrameworkOptions {
         commands,

@@ -105,6 +105,11 @@ async fn do_main() {
         .await
         .expect("Couldn't connect to database.");
 
+    sqlx::migrate!()
+        .run(&db)
+        .await
+        .expect("Error while migrating database.");
+
     let storage_dir = PathBuf::from(&storage_dir);
     tokio::fs::create_dir_all(&storage_dir)
         .await

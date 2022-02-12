@@ -20,7 +20,7 @@ serde_json = "1.0"
 
 [dependencies.sqlx]
 version = "0.5.10"
-features = ["runtime-tokio-rustls", "postgres", "chrono", "macros", "offline"]
+features = ["runtime-tokio-rustls", "postgres", "chrono", "macros", "offline", "migrate"]
 optional = true
 
 [dependencies.songbird]

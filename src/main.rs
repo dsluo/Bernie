@@ -93,8 +93,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     }
 }
 
-#[tokio::main]
-async fn main() {
+async fn do_main() {
     dotenv().ok();
     env_logger::init();
 
@@ -143,10 +142,22 @@ async fn main() {
         .await
         .expect("Couldn't build command framework.");
 
-    tokio::select! {
-        v = tokio::signal::ctrl_c() => v.expect("Failed to listen to CTRL-C."),
-        v = framework.start() => v.expect("Couldn't start command framework.")
-    };
+    framework
+        .start()
+        .await
+        .expect("Couldn't start command framework.");
+}
 
+fn main() {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            tokio::select! {
+                _ = do_main() => log::error!("Bot crashed!"),
+                v = tokio::signal::ctrl_c() => v.expect("Failed to listen to CTRL-C.")
+            }
+        });
     log::info!("Goodbye.");
 }

@@ -144,7 +144,11 @@ async fn do_main() {
     dotenv().ok();
     env_logger::init();
 
-    log::debug!("Initializing...");
+    log::info!(
+        "Initializing {} v{}.",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
 
     let token = std::env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in environment.");
     let db_uri = std::env::var("DATABASE_URL").expect("Expected DATABASE_URL in environment.");

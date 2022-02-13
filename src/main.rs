@@ -215,9 +215,27 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async {
-            tokio::select! {
-                _ = do_main() => log::error!("Bot crashed!"),
-                v = tokio::signal::ctrl_c() => v.expect("Failed to listen to CTRL-C.")
+            #[cfg(target_os = "linux")]
+            {
+                use tokio::signal::unix::{signal, SignalKind};
+                let mut sigterm =
+                    signal(SignalKind::terminate()).expect("Failed to listen to SIGTERM.");
+                let mut sigint =
+                    signal(SignalKind::interrupt()).expect("Failed to listen to SIGINT");
+                tokio::select! {
+                    _ = do_main() => log::error!("Bot crashed!"),
+                    _ = sigterm.recv() => log::info!("Received SIGTERM. Shutting down..."),
+                    _ = sigint.recv() => log::info!("Received SIGINT. Shutting down...")
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                use tokio::signal::windows::ctrl_c;
+                let mut ctrl_c = ctrl_c().expect("Failed to listen to CTRL-C");
+                tokio::select! {
+                    _ = do_main() => log::error!("Bot crashed!"),
+                    _ = ctrl_c.recv() => log::info!("Received CTRL-C. Shutting down...")
+                }
             }
         });
     log::info!("Goodbye.");

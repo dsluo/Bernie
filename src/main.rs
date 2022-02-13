@@ -105,18 +105,18 @@ async fn about(ctx: Context<'_>) -> Result<(), Error> {
         .trim()
     };
 
+    let name = env!("CARGO_PKG_NAME");
+    let version = env!("CARGO_PKG_VERSION");
+    let repo = env!("CARGO_PKG_REPOSITORY");
+
     let about = format!(
         "{name} v{version}\n\
         by `{author}`\n\
         source: {repo}",
-        name = env!("CARGO_PKG_NAME"),
-        version = env!("CARGO_PKG_VERSION"),
-        author = author,
-        repo = env!("CARGO_PKG_REPOSITORY"),
     );
 
     let message = if let Ok(invite) = get_invite(ctx).await {
-        about + "\ninvite: " + invite
+        format!("{about}\ninvite: {invite}")
     } else {
         about.to_owned()
     };
@@ -126,15 +126,15 @@ async fn about(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
-    log::warn!("Encountered error: {:#?}", error);
+    log::warn!("Encountered error: {error:#?}");
     match error {
-        poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {:?}", error),
+        poise::FrameworkError::Setup { error } => panic!("Failed to start bot: {error:?}"),
         // poise::FrameworkError::Command { error, ctx } => {
-        //     log::error!("Error in command `{}`: {:#?}", ctx.command().name, error);
+        //     log::error!("Error in command `{}`: {error:#?}", ctx.command().name);
         // }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
-                log::error!("Error while handling error: {:#?}", e);
+                log::error!("Error while handling error: {e:#?}");
             }
         }
     }
@@ -168,8 +168,8 @@ async fn do_main() {
     let storage_dir = PathBuf::from(&storage_dir);
     tokio::fs::create_dir_all(&storage_dir)
         .await
-        .unwrap_or_else(|_| panic!("Couldn't create storage directory: {:?}", &storage_dir));
-    log::debug!("Storage directory at {:?} created.", storage_dir);
+        .unwrap_or_else(|_| panic!("Couldn't create storage directory: {storage_dir:?}"));
+    log::debug!("Storage directory at {storage_dir:?} created.");
 
     let mut commands = vec![register(), help(), invite(), about()];
     commands.extend(Vec::from(COMMANDS.map(|f| f())));

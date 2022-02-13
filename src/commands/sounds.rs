@@ -71,9 +71,8 @@ pub(super) async fn add(
     let guild_dir = &ctx.data().storage_dir.join(guild_id.0.to_string());
     let sound_path = guild_dir.join(&name);
 
-    log::debug!("{:#?}", sound_path);
     if sound_path.is_file() {
-        panic!("Sound path already exists: {:?}", sound_path);
+        panic!("Sound path already exists: {sound_path:?}");
     }
     let mut file = tokio::fs::File::create(&sound_path).await?;
 

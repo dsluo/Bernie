@@ -22,7 +22,7 @@ services:
       RUST_LOG: "error,bernie=debug"
     restart: unless-stopped
     depends_on:
-      # - db
+      - db
 volumes:
   postgres:
   bernie:

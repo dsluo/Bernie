@@ -18,19 +18,17 @@ pub(super) async fn add(
     let mut transaction = db.begin().await?;
 
     let guild_id = ctx.guild_id().unwrap();
-    let guild_id = guild_id.0 as i64;
     let uploader_id = ctx.author().id;
-    let uploader_id = uploader_id.0 as i64;
 
     // try this insert first to make sure the sound doesn't already exist.
     let sound_id = sqlx::query!(
         "insert into sounds(guild_id, name, source, uploader_id, length) \
             values($1, $2, $3, $4, $5)
             returning id",
-        guild_id,
+        guild_id.0 as i64,
         name,
         source,
-        uploader_id,
+        uploader_id.0 as i64,
         0 // we calculate this later
     )
     .map(|record| record.id)
@@ -70,7 +68,7 @@ pub(super) async fn add(
     // let metadata: Value = serde_json::from_slice(&ytdl_output.stderr)?;
     let download = &ytdl_output.stdout;
 
-    let guild_dir = &ctx.data().storage_dir.join(guild_id.to_string());
+    let guild_dir = &ctx.data().storage_dir.join(guild_id.0.to_string());
     let sound_path = guild_dir.join(&name);
 
     log::debug!("{:#?}", sound_path);
@@ -184,8 +182,8 @@ pub(super) async fn rename(
         ));
     }
 
-    let old_path = storage_dir.join(old_name);
-    let new_path = storage_dir.join(new_name);
+    let old_path = storage_dir.join(guild_id.0.to_string()).join(old_name);
+    let new_path = storage_dir.join(guild_id.0.to_string()).join(new_name);
 
     tokio::fs::rename(old_path, new_path).await?;
 
@@ -224,7 +222,7 @@ pub(super) async fn remove(
         ));
     }
 
-    let file = storage_dir.join(name);
+    let file = storage_dir.join(guild_id.0.to_string()).join(name);
     tokio::fs::remove_file(file).await?;
 
     transaction.commit().await?;

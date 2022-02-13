@@ -1,6 +1,6 @@
 [package]
 name = "bernie"
-version = "0.1.0-beta"
+version = "0.1.0"
 edition = "2021"
 authors = ["dsluo <me@dsluo.dev>"]
 description = "A soundboard for Discord"

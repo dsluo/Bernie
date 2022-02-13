@@ -21,11 +21,16 @@ VOLUME ["${STORAGE_DIR}"]
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
+    python3 \
+    ca-certificates \
     ffmpeg \
-    wget \
-  && wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp \
+  && python3 -c \
+    "import urllib.request;\
+    urllib.request.urlretrieve(\
+      'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',\
+      '/usr/local/bin/yt-dlp'\
+    )" \
   && chmod a+rx /usr/local/bin/yt-dlp \
-  && apt-get autoremove -y wget \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/bernie/target/release/bernie /usr/local/bin

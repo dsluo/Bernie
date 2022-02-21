@@ -1539,7 +1539,7 @@ dependencies = [
 [[package]]
 name = "serenity-voice-model"
 version = "0.1.1"
-source = "git+https://github.com/serenity-rs/serenity.git?branch=next#de1f2580ef5e756c24a9be9ae345847fbb1591b8"
+source = "git+https://github.com/serenity-rs/serenity.git?branch=next#226d6a0ea88aadb896a3ffafbcc47243fd98090a"
 dependencies = [
  "bitflags",
  "enum_primitive",
@@ -1616,8 +1616,8 @@ dependencies = [
 
 [[package]]
 name = "songbird"
-version = "0.2.1"
-source = "git+https://github.com/serenity-rs/songbird.git?branch=next#d3f0974412d217e7047c9681ba85d0217d79e741"
+version = "0.2.2"
+source = "git+https://github.com/serenity-rs/songbird.git?branch=next#e0ab49c2ff92cb4c5f3ffc90be7a267fd12c905b"
 dependencies = [
  "async-trait",
  "async-tungstenite 0.14.0",
